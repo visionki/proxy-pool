@@ -10,6 +10,7 @@
 | ---- | ---- |
 | 高可用全球免费代理IP库 | https://ip.jiangxianli.com/ |
 | 小幻代理 | https://ip.ihuan.me/ |
+
 暂时只抓取这两个网站的开放代理IP，可自己拓展，仿照`IpJob1`新建抓取线程类，再添加到`LoadIpTask`定时任务抓取。
 # 检测规则
 数据库内有两个表，`check_ip_pool`和`available_ip_pool`
