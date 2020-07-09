@@ -30,7 +30,10 @@ public class CheckIpTask {
     private static List<IpInfo> ipInfoList = new ArrayList<>();
     private static int index = 0;
 
-
+    /**
+     * 获取IP
+     * @return
+     */
     public static synchronized IpInfo getIpInfo(){
         if (index == ipInfoList.size()){
             return null;

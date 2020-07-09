@@ -11,7 +11,7 @@ public class AppConst {
     /**
      * 默认遍历页面数量
      */
-    public static final int PAGE_SIZE = 20;
+    public static final int PAGE_SIZE = 30;
     /**
      * 测试代理IP的链接，借百度鉴权接口一用
      */

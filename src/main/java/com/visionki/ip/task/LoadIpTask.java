@@ -2,6 +2,7 @@ package com.visionki.ip.task;
 
 import com.visionki.ip.job.IpJob1;
 import com.visionki.ip.job.IpJob2;
+import com.visionki.ip.job.IpJob3;
 import com.visionki.ip.service.IpInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -33,5 +34,8 @@ public class LoadIpTask {
         job1.start();
         IpJob2 job2 = new IpJob2(ipInfoService);
         job2.start();
+        // 可用IP较少干脆关了
+//        IpJob3 job3 = new IpJob3(ipInfoService);
+//        job3.start();
     }
 }

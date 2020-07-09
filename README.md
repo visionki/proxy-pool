@@ -6,10 +6,11 @@
 - 打包运行即可
 
 # 数据源
-| 名称 | 链接 |
-| ---- | ---- |
-| 高可用全球免费代理IP库 | https://ip.jiangxianli.com/ |
-| 小幻代理 | https://ip.ihuan.me/ |
+| 名称 | 链接 | 对应java类 | 备注 |
+| ---- | ---- | ---- | ---- |
+| 高可用全球免费代理IP库 | https://ip.jiangxianli.com | IpJob1 | 可用IP多 |
+| 小幻代理 | https://ip.ihuan.me | IpJob2 | 可用IP多 |
+| 89代理 | http://www.89ip.cn | IpJob3 | 可用IP少，如不用可去掉 |
 
 暂时只抓取这两个网站的开放代理IP，可自己拓展，仿照`IpJob1`新建抓取线程类，再添加到`LoadIpTask`定时任务抓取。
 # 检测规则
