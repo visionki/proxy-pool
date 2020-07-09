@@ -1,7 +1,5 @@
 package com.visionki.ip.service;
 
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.Unirest;
 import com.visionki.ip.constant.AppConst;
 import com.visionki.ip.dao.AvailableIpPoolDao;
 import com.visionki.ip.dao.CheckIpPoolDao;
@@ -10,9 +8,9 @@ import com.visionki.ip.task.CheckIpTask;
 import com.visionki.ip.util.DateUtils;
 import com.visionki.ip.util.HttpsUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHost;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
 import sun.net.www.protocol.https.Handler;
 
@@ -24,6 +22,7 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URL;
 import java.util.List;
+import java.util.concurrent.Future;
 
 /**
  * @Author: vision
@@ -40,8 +39,6 @@ public class IpInfoService {
     private CheckIpPoolDao checkIpPoolDao;
     @Autowired
     private AvailableIpPoolDao availableIpPoolDao;
-
-    private static final String VALIDATE_URL = "http://www.baidu.com/";
     /**
      * 将信息加入到待检查IP库
      * @param ipInfo
@@ -64,12 +61,12 @@ public class IpInfoService {
     }
 
     @Async("taskExecutor")
-    public void checkIp() {
+    public Future<String> checkIp() {
         while (true){
             IpInfo ipInfo = CheckIpTask.getIpInfo();
             if (ipInfo == null){
                 log.info("线程{}检查IP已完成",Thread.currentThread().getName());
-                return;
+                return new AsyncResult<>(Thread.currentThread().getName());
             }
             // 检查IP
             try {
@@ -112,7 +109,7 @@ public class IpInfoService {
         boolean available = false;
         HttpURLConnection connection = null;
         try {
-            URL url = new URL(VALIDATE_URL);
+            URL url = new URL(AppConst.CHECK_HTTP_URL);
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(ip, port));
             connection = (HttpURLConnection) url.openConnection(proxy);
             connection.setRequestProperty("accept", "");
@@ -147,7 +144,7 @@ public class IpInfoService {
         boolean available = false;
         HttpsURLConnection httpsURLConnection = null;
         try {
-            URL url = new URL(null, VALIDATE_URL, new Handler());
+            URL url = new URL(null, AppConst.CHECK_HTTPS_URL, new Handler());
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(ip, port));
             httpsURLConnection = (HttpsURLConnection) url.openConnection(proxy);
             httpsURLConnection.setSSLSocketFactory(HttpsUtils.getSslSocketFactory());
@@ -180,7 +177,7 @@ public class IpInfoService {
     }
 
     public static void main(String[] args) {
-        boolean b = validateHttp("185.25.206.192", 8080);
-
+        boolean b = validateHttp("111.206.37.248", 80);
+        System.out.println(b);
     }
 }

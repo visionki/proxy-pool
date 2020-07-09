@@ -13,9 +13,13 @@ public class AppConst {
      */
     public static final int PAGE_SIZE = 30;
     /**
-     * 测试代理IP的链接，借百度鉴权接口一用
+     * 测试代理IP，HTTP链接
      */
-    public static final String CHECK_URL = "http://www.baidu.com";
+    public static final String CHECK_HTTP_URL = "http://www.baidu.com";
+    /**
+     * 测试代理IP，HTTPS链接
+     */
+    public static final String CHECK_HTTPS_URL = "https://www.baidu.com";
     /**
      * 检查IP线程数量
      */

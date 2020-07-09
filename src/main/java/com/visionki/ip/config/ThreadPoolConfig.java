@@ -18,25 +18,25 @@ public class ThreadPoolConfig {
      *   每秒需要多少个线程处理?
      *   tasks/(1/taskcost)
      */
-    private int corePoolSize = 10;
+    private int corePoolSize = Runtime.getRuntime().availableProcessors();
 
     /**
      * 线程池维护线程的最大数量
      * (max(tasks)- queueCapacity)/(1/taskcost)
      */
-    private int maxPoolSize = 10;
+    private int maxPoolSize = corePoolSize * 5;
 
     /**
      * 缓存队列
      * (coreSizePool/taskcost)*responsetime
      */
-    private int queueCapacity = 10;
+    private int queueCapacity = 128;
 
     /**
      * 允许的空闲时间
      * 默认为60
      */
-    private int keepAlive = 100;
+    private int keepAlive = 60;
 
     @Bean
     public TaskExecutor taskExecutor() {
@@ -48,7 +48,7 @@ public class ThreadPoolConfig {
         // 设置队列容量
         executor.setQueueCapacity(queueCapacity);
         // 设置允许的空闲时间（秒）
-        //executor.setKeepAliveSeconds(keepAlive);
+        executor.setKeepAliveSeconds(keepAlive);
         // 设置默认线程名称
         executor.setThreadNamePrefix("thread-");
         // 设置拒绝策略rejection-policy：当pool已经达到max size的时候，如何处理新任务

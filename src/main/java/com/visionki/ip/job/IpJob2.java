@@ -55,7 +55,6 @@ public class IpJob2 extends Thread{
                 }
                 Elements elementsByTag = document.getElementsByClass("pagination").get(0).getElementsByTag("li");
                 for (Element element : elementsByTag){
-                    String text = element.text();
                     if ((i + 1 + "").equals(element.text())){
                         urlTemp = url + element.getElementsByTag("a").get(0).attr("href");
                         break;
