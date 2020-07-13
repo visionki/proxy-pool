@@ -7,6 +7,7 @@ import com.visionki.ip.constant.AppConst;
 import com.visionki.ip.model.IpInfo;
 import com.visionki.ip.service.IpInfoService;
 import com.visionki.ip.util.DateUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -20,6 +21,7 @@ import org.jsoup.select.Elements;
  * @Description: 数据源：高可用全球免费代理IP库
  *                 链接：https://ip.jiangxianli.com/?page=1
  */
+@Slf4j
 public class IpJob1 extends Thread{
 
     private IpInfoService ipInfoService;
@@ -44,6 +46,10 @@ public class IpJob1 extends Thread{
                     IpInfo ipInfo = new IpInfo();
                     ipInfo.setIp(tdList.get(0).text());
                     ipInfo.setPort(tdList.get(1).text());
+                    if (ipInfoService.checkInInvalid(ipInfo.getIp(),ipInfo.getPort())){
+                        // IP处于不可用状态
+                        continue;
+                    }
                     ipInfo.setAnonymous(tdList.get(2).text());
                     ipInfo.setType(tdList.get(3).text());
                     ipInfo.setLocation(tdList.get(4).text());

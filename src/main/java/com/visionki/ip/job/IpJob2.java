@@ -7,6 +7,7 @@ import com.visionki.ip.constant.AppConst;
 import com.visionki.ip.model.IpInfo;
 import com.visionki.ip.service.IpInfoService;
 import com.visionki.ip.util.DateUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -19,6 +20,7 @@ import org.jsoup.select.Elements;
  * @Copyright: Copyright (c) 2020
  * @Description: 链接：https://ip.ihuan.me/
  */
+@Slf4j
 public class IpJob2 extends Thread{
 
     private IpInfoService ipInfoService;
@@ -45,6 +47,10 @@ public class IpJob2 extends Thread{
                     IpInfo ipInfo = new IpInfo();
                     ipInfo.setIp(tdList.get(0).text());
                     ipInfo.setPort(tdList.get(1).text());
+                    if (ipInfoService.checkInInvalid(ipInfo.getIp(),ipInfo.getPort())){
+                        // IP处于不可用状态
+                        continue;
+                    }
                     ipInfo.setLocation(tdList.get(2).text());
                     ipInfo.setCompany(tdList.get(3).text());
                     ipInfo.setType("支持".equals(tdList.get(4).text()) ? "HTTPS" : "HTTP");

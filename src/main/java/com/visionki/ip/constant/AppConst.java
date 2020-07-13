@@ -24,4 +24,8 @@ public class AppConst {
      * 检查IP线程数量
      */
     public static final int CHECK_THREAD_SIZE = 10;
+    /**
+     * IP不可用标记时长（10分钟，单位毫秒）
+     */
+    public static final int INVALID_TIME = 10 * 60 * 1000;
 }

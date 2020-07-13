@@ -3,24 +3,19 @@ package com.visionki.ip.service;
 import com.visionki.ip.constant.AppConst;
 import com.visionki.ip.dao.AvailableIpPoolDao;
 import com.visionki.ip.dao.CheckIpPoolDao;
+import com.visionki.ip.dao.InvalidIpPoolDao;
+import com.visionki.ip.model.InvalidIpInfo;
 import com.visionki.ip.model.IpInfo;
 import com.visionki.ip.task.CheckIpTask;
 import com.visionki.ip.util.DateUtils;
-import com.visionki.ip.util.HttpsUtils;
+import com.visionki.ip.util.ProxyUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
-import sun.net.www.protocol.https.Handler;
 
-import javax.net.ssl.HttpsURLConnection;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.URL;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Future;
 
@@ -39,6 +34,11 @@ public class IpInfoService {
     private CheckIpPoolDao checkIpPoolDao;
     @Autowired
     private AvailableIpPoolDao availableIpPoolDao;
+    @Autowired
+    private InvalidIpPoolDao invalidIpPoolDao;
+
+
+
     /**
      * 将信息加入到待检查IP库
      * @param ipInfo
@@ -60,6 +60,19 @@ public class IpInfoService {
         return checkIpPoolDao.getAllCheckIpList();
     }
 
+    /**
+     * 获取全部可用IP
+     * @return
+     * @param type
+     */
+    public List<IpInfo> getAllAvailableIpList(String type) {
+        return availableIpPoolDao.getAllCheckIpList(type);
+    }
+
+    /**
+     * 异步检测IP
+     * @return
+     */
     @Async("taskExecutor")
     public Future<String> checkIp() {
         while (true){
@@ -70,114 +83,76 @@ public class IpInfoService {
             }
             // 检查IP
             try {
-                log.info("线程{}检查IP",Thread.currentThread().getName());
                 // 利用代理访问测试接口
                 boolean available;
+                long start = System.currentTimeMillis();
                 if ("HTTP".equals(ipInfo.getType())){
-                    available = validateHttp(ipInfo.getIp(), Integer.parseInt(ipInfo.getPort()));
+                    available = ProxyUtil.validateHttp(ipInfo.getIp(), Integer.parseInt(ipInfo.getPort()));
                 }else {
-                    available = validateHttps(ipInfo.getIp(), Integer.parseInt(ipInfo.getPort()));
+                    available = ProxyUtil.validateHttps(ipInfo.getIp(), Integer.parseInt(ipInfo.getPort()));
                 }
+                long end = System.currentTimeMillis();
+                long time = end - start;
+                ipInfo.setSpeed(time + "ms");
+                ipInfo.setLastCheckTime(DateUtils.getCurrentDateTime(DateUtils.DATE_TIME_FORMAT));
                 if (available){
-                    // 可用，更新到可用库
-                    ipInfo.setLastCheckTime(DateUtils.getCurrentDateTime(DateUtils.DATE_TIME_FORMAT));
-                    availableIpPoolDao.upsert(ipInfo);
+                    log.info("线程{}检查IP：{}，port：{}，状态：{}，响应时间：{}ms",Thread.currentThread().getName(),ipInfo.getIp(),ipInfo.getPort(),available,time);
+                    signAvailable(ipInfo);
                 }else {
-                    // 不可用，从可用库中删除
-                    IpInfo availableIp = availableIpPoolDao.getByIp(ipInfo.getIp());
-                    if (availableIp != null){
-                        availableIpPoolDao.removeByIp(ipInfo.getIp());
-                    }else {
-                        checkIpPoolDao.removeByIp(ipInfo.getIp());
-                    }
+                    log.error("线程{}检查IP：{}，port：{}，状态：{}，响应时间：{}ms",Thread.currentThread().getName(),ipInfo.getIp(),ipInfo.getPort(),available,time);
+                    signInvalid(ipInfo);
                 }
             }catch (Exception e){
-                // 不可用，从可用库中删除
-                IpInfo availableIp = availableIpPoolDao.getByIp(ipInfo.getIp());
-                if (availableIp != null){
-                    availableIpPoolDao.removeByIp(ipInfo.getIp());
-                }else {
-                    checkIpPoolDao.removeByIp(ipInfo.getIp());
-                }
+                signInvalid(ipInfo);
                 e.printStackTrace();
             }
         }
     }
 
+    /**
+     * 标记为可用IP
+     * @param ipInfo
+     */
+    private void signAvailable(IpInfo ipInfo){
+        // 更新可用IP库
+        availableIpPoolDao.upsert(ipInfo);
+        // 从不可用库中删除
+        invalidIpPoolDao.removeByIp(ipInfo.getIp());
+    }
 
-    private static boolean validateHttp(String ip, int port) {
-        boolean available = false;
-        HttpURLConnection connection = null;
-        try {
-            URL url = new URL(AppConst.CHECK_HTTP_URL);
-            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(ip, port));
-            connection = (HttpURLConnection) url.openConnection(proxy);
-            connection.setRequestProperty("accept", "");
-            connection.setRequestProperty("connection", "Keep-Alive");
-            connection.setRequestProperty("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36");
-            connection.setConnectTimeout(5 * 1000);
-            connection.setReadTimeout(5 * 1000);
-            connection.setInstanceFollowRedirects(false);
-            BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            String s = null;
-            StringBuilder sb = new StringBuilder();
-            while ((s = br.readLine()) != null) {
-                sb.append(s);
-            }
-            if (sb.toString().contains("baidu.com") && connection.getResponseCode() == 200) {
-                available = true;
-            }
-            log.info("validateHttp ==> ip:{} port:{} info:{}", ip, port, connection.getResponseMessage());
-        } catch (Exception e) {
-            //e.printStackTrace();
-            log.error("validateHttp ==> ip:{} port:{} info:{}", ip, port, "ERROR");
-            available = false;
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
+    /**
+     * 标记为不可用IP
+     * @param ipInfo
+     */
+    private void signInvalid(IpInfo ipInfo){
+        IpInfo availableIp = availableIpPoolDao.getByIp(ipInfo.getIp());
+        if (availableIp != null){
+            availableIpPoolDao.removeByIp(ipInfo.getIp());
+        }else {
+            checkIpPoolDao.removeByIp(ipInfo.getIp());
+            InvalidIpInfo invalidIpInfo = new InvalidIpInfo();
+            invalidIpInfo.setIp(ipInfo.getIp());
+            invalidIpInfo.setPort(ipInfo.getPort());
+            invalidIpInfo.setCheckTime(DateUtils.getCurrentDateTime(DateUtils.DATE_TIME_FORMAT));
+            invalidIpPoolDao.upsertByIp(invalidIpInfo);
         }
-        return available;
     }
 
-    private boolean validateHttps(String ip, int port) {
-        boolean available = false;
-        HttpsURLConnection httpsURLConnection = null;
-        try {
-            URL url = new URL(null, AppConst.CHECK_HTTPS_URL, new Handler());
-            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(ip, port));
-            httpsURLConnection = (HttpsURLConnection) url.openConnection(proxy);
-            httpsURLConnection.setSSLSocketFactory(HttpsUtils.getSslSocketFactory());
-            httpsURLConnection.setHostnameVerifier(HttpsUtils.getTrustAnyHostnameVerifier());
-            httpsURLConnection.setRequestProperty("accept", "");
-            httpsURLConnection.setRequestProperty("connection", "Keep-Alive");
-            httpsURLConnection.setRequestProperty("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36");
-            httpsURLConnection.setConnectTimeout(10 * 1000);
-            httpsURLConnection.setReadTimeout(10 * 1000);
-            httpsURLConnection.setInstanceFollowRedirects(false);
-            BufferedReader br = new BufferedReader(new InputStreamReader(httpsURLConnection.getInputStream()));
-            String s = null;
-            StringBuilder sb = new StringBuilder();
-            while ((s = br.readLine()) != null) {
-                sb.append(s);
-            }
-            if (sb.toString().contains("baidu.com") && httpsURLConnection.getResponseCode() == 200) {
-                available = true;
-            }
-            log.info("validateHttps ==> ip:{} port:{} info:{}", ip, port, httpsURLConnection.getResponseMessage());
-        } catch (Exception e) {
-            //e.printStackTrace();
-            available = false;
-        } finally {
-            if (httpsURLConnection != null) {
-                httpsURLConnection.disconnect();
-            }
+    /**
+     * 检测是否处于不可用状态（若IP不可用，10分钟内标记为不可用状态）
+     * @param ip
+     * @param port
+     * @return true - 不可用，false - 可用
+     */
+    public boolean checkInInvalid(String ip,String port){
+        InvalidIpInfo invalidIpInfo = invalidIpPoolDao.getIpInfo(ip,port);
+        if (invalidIpInfo == null){
+            return false;
         }
-        return available;
+        Date date = DateUtils.parseDate(invalidIpInfo.getCheckTime(), DateUtils.DATE_TIME_FORMAT);
+        return System.currentTimeMillis() - date.getTime() <= AppConst.INVALID_TIME;
     }
 
-    public static void main(String[] args) {
-        boolean b = validateHttp("111.206.37.248", 80);
-        System.out.println(b);
-    }
+
+
 }

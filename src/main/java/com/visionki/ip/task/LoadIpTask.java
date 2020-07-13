@@ -2,7 +2,6 @@ package com.visionki.ip.task;
 
 import com.visionki.ip.job.IpJob1;
 import com.visionki.ip.job.IpJob2;
-import com.visionki.ip.job.IpJob3;
 import com.visionki.ip.service.IpInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;

@@ -48,8 +48,7 @@ public class CheckIpPoolDao {
 
     public List<IpInfo> getAllCheckIpList() {
         Query query = new Query();
-        List<IpInfo> ipInfoList = mongoTemplate.find(query, IpInfo.class, tableName);
-        return ipInfoList;
+        return mongoTemplate.find(query, IpInfo.class, tableName);
     }
 
 
